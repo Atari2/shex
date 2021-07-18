@@ -17,6 +17,7 @@ SOURCES += main.cpp\
         main_window.cpp \
     hex_editor.cpp \
     dynamic_scrollbar.cpp \
+    panels/diff_panel.cpp \
     rom_buffer.cpp \
     undo_commands.cpp \
     dialogs/select_range_dialog.cpp \
@@ -55,6 +56,7 @@ SOURCES += main.cpp\
 HEADERS  += main_window.h \
     hex_editor.h \
     dynamic_scrollbar.h \
+    panels/diff_panel.h \
     version.h \
     rom_buffer.h \
     undo_commands.h \

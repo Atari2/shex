@@ -8,6 +8,7 @@
 #include "menu_manager.h"
 #include "rom_buffer.h"
 #include "editor_font.h"
+#include "panels/diff_panel.h"
 #include "debug.h"
 
 class hex_editor;

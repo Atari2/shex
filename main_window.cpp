@@ -210,8 +210,14 @@ void main_window::file_state_changed(const QString& path) {
 		int button = QMessageBox::warning(this, "Warning", "File " + filename + " was modified outside of shex, do you want to load external changes?",
                                                QMessageBox::Yes | QMessageBox::No, QMessageBox::Yes);
 		if (button == QMessageBox::Yes) {
-			hex_editor* editor = get_editor(get_editor_index_by_filename(filename));
-			editor->reload();
+			int index = get_editor_index_by_filename(filename);
+			hex_editor* editor = get_editor(index);
+			hex_editor placeholder{nullptr, "", undo_group, true};
+			tab_widget->widget(index)->layout()->replaceWidget(editor, &placeholder);
+			diff_panel::diff_show(editor, path, this);
+			tab_widget->widget(index)->layout()->replaceWidget(&placeholder, editor);
+			tab_widget->setTabText(index, editor->get_file_name());
+			// editor->reload();
 			if (editor->load_error() != "") {
 				QMessageBox::critical(this, "Invalid ROM", editor->load_error(), QMessageBox::Ok);
 			}

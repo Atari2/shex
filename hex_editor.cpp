@@ -76,16 +76,24 @@ void hex_editor::compare(QString file)
 {
 	comparing = true;
 	compare_buffer->open(file);
+	if (compare_buffer->load_error() != "") {
+		QMessageBox::critical(this, "Error", compare_buffer->load_error(), QMessageBox::Ok);
+		return;
+	}
 	QGridLayout *grid = (QGridLayout *)layout();
 	
 	//work around this eventually... but it works for now
-	address->setMaximumHeight(address->size().height() / 2 + 1);
-	hex->setMaximumHeight(hex->size().height() / 2 + 1);
-	ascii->setMaximumHeight(ascii->size().height() / 2 + 1);
-	address->setMaximumHeight(QWIDGETSIZE_MAX);
-	hex->setMaximumHeight(QWIDGETSIZE_MAX);
-	ascii->setMaximumHeight(QWIDGETSIZE_MAX);
-	
+	address->setMaximumHeight(size().height() / 2 + 1);
+	hex->setMaximumHeight(size().height() / 2 + 1);
+	ascii->setMaximumHeight(size().height() / 2 + 1);
+
+	compare_address->setMaximumHeight(size().height() / 2 + 1);
+	compare_hex->setMaximumHeight(size().height() / 2 + 1);
+	compare_ascii->setMaximumHeight(size().height() / 2 + 1);
+	// address->setMaximumHeight(QWIDGETSIZE_MAX);
+	// hex->setMaximumHeight(QWIDGETSIZE_MAX);
+	// ascii->setMaximumHeight(QWIDGETSIZE_MAX);
+
 	compare_address->show();
 	compare_ascii->show();
 	compare_hex->show();
@@ -99,6 +107,10 @@ void hex_editor::close_compare()
 	comparing = false;
 	QGridLayout *grid = (QGridLayout *)layout();
 	
+	address->setMaximumHeight(QWIDGETSIZE_MAX);
+	hex->setMaximumHeight(QWIDGETSIZE_MAX);
+	ascii->setMaximumHeight(QWIDGETSIZE_MAX);
+
 	compare_address->hide();
 	compare_ascii->hide();
 	compare_hex->hide();
@@ -137,6 +149,89 @@ void hex_editor::goto_diff(bool direction)
 	}else{
 		emit update_status_text("No differences found!");
 	}
+	current_diff_start_byte = offset;
+}
+
+void hex_editor::accept_incoming_diff() {
+	if (!comparing || diffs->size() == 0)
+		return;
+	auto index = -1;
+	selection sel{};
+	if (current_diff_start_byte == -1) {
+		sel = diffs->first();
+		index = 0;
+	}
+	else {
+		bool found = false;
+		for (auto &diff : *diffs) {
+			index++;
+			if (current_diff_start_byte >= diff.get_start_byte() && current_diff_start_byte <= diff.get_end_byte()) {
+				sel = diff;
+				found = true;
+				break;
+			}
+		}
+		if (!found)
+			return;
+	}
+	if (index == -1)
+		return;
+	buffer->update_raw_range(sel.get_start_byte(), sel.get_end_byte(), compare_buffer->get_range(sel.get_start_byte(), sel.get_end_byte()));
+	goto_diff(true);
+	diffs->removeAt(index);
+	update_window();
+}
+
+void hex_editor::accept_all_incoming_diffs() {
+	if (!comparing)
+		return;
+	for (auto& sel : *diffs) {
+		buffer->update_raw_range(sel.get_start_byte(), sel.get_end_byte(), compare_buffer->get_range(sel.get_start_byte(), sel.get_end_byte()));
+	}
+	current_diff_start_byte = -1;
+	diffs->clear();
+	update_window();
+}
+
+void hex_editor::accept_current_diff() {
+	if (!comparing || diffs->size() == 0)
+		return;
+	auto index = -1;
+	selection sel{};
+	if (current_diff_start_byte == -1) {
+		index = 0;
+		sel = diffs->first();
+	}
+	else {
+		bool found = false;
+		for (auto &diff : *diffs) {
+			index++;
+			if (current_diff_start_byte >= diff.get_start_byte() && current_diff_start_byte <= diff.get_end_byte()) {
+				sel = diff;
+				found = true;
+				break;
+			}
+		}
+		if (!found)
+			return;
+	}
+	if (index == -1)
+		return;
+	compare_buffer->update_raw_range(sel.get_start_byte(), sel.get_end_byte(), buffer->get_range(sel.get_start_byte(), sel.get_end_byte()));
+	goto_diff(true);
+	diffs->removeAt(index);
+	update_window();
+}
+
+void hex_editor::accept_all_current_diffs() {
+	if (!comparing)
+		return;
+	for (auto& sel : *diffs) {
+		compare_buffer->update_raw_range(sel.get_start_byte(), sel.get_end_byte(), buffer->get_range(sel.get_start_byte(), sel.get_end_byte()));
+	}
+	current_diff_start_byte = -1;
+	diffs->clear();
+	update_window();
 }
 
 QString hex_editor::generate_patch()
@@ -176,6 +271,12 @@ void hex_editor::save(QString path) {
 	if (ROM_error != "")
 		return;
 	update_save_state(-save_state);
+}
+
+void hex_editor::save_compared() {
+	if (!comparing)
+		return;
+	compare_buffer->save(compare_buffer->get_full_path());
 }
 
 void hex_editor::reload() {

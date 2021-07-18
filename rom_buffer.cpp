@@ -255,6 +255,20 @@ void ROM_buffer::update_byte(char byte, int position, int delete_start, int dele
 	undo_stack->endMacro();
 }
 
+void ROM_buffer::update_raw_range(int begin, int end, const QByteArray& arr) {
+	if (end > buffer.size() || end < begin)
+		return;
+	for (int i = begin; i < end; i++) {
+		buffer[i] = arr[i - begin];
+	}
+}
+
+QByteArray ROM_buffer::get_range(int begin, int end) {
+	if (end > buffer.size() || end < begin)
+		return {};
+	return buffer.mid(begin, end - begin);
+}
+
 QString ROM_buffer::get_formatted_address(int address) const
 {
 	address = pc_to_snes(address);

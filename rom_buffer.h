@@ -45,6 +45,8 @@ class ROM_buffer : public ROM_metadata
 		void delete_text(int start, int end = 0);
 		void update_nibble(char byte, int position, int delete_start = 0, int delete_end = 0);
 		virtual void update_byte(char byte, int position, int delete_start = 0, int delete_end = 0);
+		void update_raw_range(int begin, int end, const QByteArray& arr);
+		QByteArray get_range(int begin, int end);
 		QString get_formatted_address(int address) const;
 		int count(QString find, bool mode);
 		int search(QString find, int position, bool direction, bool mode);
@@ -61,6 +63,7 @@ class ROM_buffer : public ROM_metadata
 		QString get_hex(QString input) { return input.remove(QRegExp("[^0-9A-Fa-f]")); }
 		QString load_error() { return ROM_error; }
 		QString get_file_name(){ QFileInfo info(ROM); return info.fileName();  }
+		QString get_full_path(){ QFileInfo info(ROM); return info.filePath(); }
 		QByteArray range(int start, int end) const { return buffer.mid(start/2, (end-start)/2); }
 		
 		const bookmark_map *get_bookmark_map() const { return bookmarks; }

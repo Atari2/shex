@@ -20,6 +20,10 @@ class hex_editor : public QWidget
 		void compare(QString file);
 		void close_compare();
 		void goto_diff(bool direction);
+		void accept_current_diff();
+		void accept_incoming_diff();
+		void accept_all_current_diffs();
+		void accept_all_incoming_diffs();
 		QString generate_patch();
 		bool follow_selection(bool type);
 		
@@ -27,8 +31,10 @@ class hex_editor : public QWidget
 		QVector<selection> *get_diff(){ return diffs; }
 		QString load_error() { return ROM_error; }
 		QString get_file_name() { return buffer->get_file_name(); }
+		QString get_comparing_full_path() { return comparing ? compare_buffer->get_full_path() : ""; }
 		int get_relative_position(int address){ return cursor_nibble / 2 + address; }
 		void save(QString path);
+		void save_compared();
 		void reload();
 		bool can_save(){ return save_state; }
 		bool new_file(){ return is_new; }
@@ -86,6 +92,7 @@ class hex_editor : public QWidget
 	private:
 		ROM_buffer *buffer;
 		int offset = 0;
+		int current_diff_start_byte = -1;
 		
 		hex_display *hex;
 		ascii_display *ascii;
