@@ -8,6 +8,8 @@ ROM_buffer::ROM_buffer(QString file_name, bool new_file)
 {
 	if(!new_file){
 		open(file_name);
+		if (ROM_error != "")
+			return;
 		get_rats_tags();
 	}else{
 		buffer.fill(0x00, 0x8000);
@@ -25,8 +27,12 @@ void ROM_buffer::remove_copy_header()
 
 void ROM_buffer::open(QString path)
 {
+	ROM_error = "";
 	ROM.setFileName(path);
-	ROM.open(QFile::ReadOnly);
+	if (!ROM.open(QFile::ReadOnly)) {
+		ROM_error = "The ROM " + path + " couldn't be opened for reading.";
+		return;
+	}
 	buffer = ROM.readAll();
 	if(ROM.size() < 0x8000){
 		ROM_error = "The ROM is too small to be valid.";
@@ -38,18 +44,35 @@ void ROM_buffer::open(QString path)
 
 void ROM_buffer::save(QString path)
 {
+	ROM_error = "";
 	QFileInfo info(ROM);
 	if(path != "" && path != info.absolutePath()){
 		ROM.setFileName(path);	
 	}
-	ROM.open(QFile::WriteOnly);
+	if (!ROM.open(QFile::WriteOnly)) {
+		ROM_error = "The ROM " + path + " couldn't be opened for writing.";
+		return;
+	}
 	if(header_size()){
 		ROM.seek(0);
-		ROM.write(header_buffer);
+		qint64 bytes_written = ROM.write(header_buffer);
+		if (bytes_written != header_size()) {
+			ROM_error = "The ROM " + path + " couldn't be written to fully, please check file permissions.";
+			ROM.close();
+			return;
+		}
 	}
 	ROM.seek(header_size());
-	ROM.write(buffer);
+	qint64 bytes_written = ROM.write(buffer);
+	if (bytes_written != buffer.size()) {
+		ROM_error = "The ROM " + path + " couldn't be written to fully, please check file permissions.";
+	}
 	ROM.close();
+}
+
+void ROM_buffer::reload()
+{
+	open(ROM.fileName());
 }
 
 void ROM_buffer::initialize_undo(QUndoGroup *undo_group)

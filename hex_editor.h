@@ -28,7 +28,8 @@ class hex_editor : public QWidget
 		QString load_error() { return ROM_error; }
 		QString get_file_name() { return buffer->get_file_name(); }
 		int get_relative_position(int address){ return cursor_nibble / 2 + address; }
-		void save(QString path) { buffer->save(path); update_save_state(-save_state); }
+		void save(QString path);
+		void reload();
 		bool can_save(){ return save_state; }
 		bool new_file(){ return is_new; }
 		

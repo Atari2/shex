@@ -36,6 +36,7 @@ class ROM_buffer : public ROM_metadata
 		virtual void remove_copy_header();
 		void open(QString path);
 		void save(QString path);
+		void reload();
 		void initialize_undo(QUndoGroup *undo_group);
 		void cut(int start, int end, bool ascii_mode);
 		void copy(int start, int end, bool ascii_mode);

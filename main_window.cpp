@@ -17,7 +17,9 @@ main_window::main_window(QWidget *parent)
         : QMainWindow(parent)
 {
 	statusBar()->addWidget(statusbar);
-	
+
+	file_watcher = new QFileSystemWatcher(this);
+	connect(file_watcher, &QFileSystemWatcher::fileChanged, this, &main_window::file_state_changed);
 	QWidget* widget = new QWidget(this);
 	QHBoxLayout *tab_layout = new QHBoxLayout(widget);
 	tab_layout->addWidget(tab_widget);
@@ -86,6 +88,7 @@ bool main_window::close_tab(int i)
 			break;
 		}
 	}
+	unwatch_file(editor->get_file_name());
 	QWidget *widget = tab_widget->widget(i);
 	tab_widget->removeTab(i);
 	delete widget;
@@ -175,8 +178,45 @@ bool main_window::save(bool override_name, int target)
 		}
 		last_directory = absolute_path(name);
 	}
+	unwatch_file(get_active_editor()->get_file_name());
 	editor->save(name);
+	if (editor->load_error() != "") {
+		QMessageBox::critical(this, "Invalid ROM", editor->load_error(), QMessageBox::Ok);
+		return false;
+	}
+	watch_file(get_active_editor()->get_file_name());
 	return true;
+}
+
+bool main_window::watch_file(const QString& name) {
+	return file_watcher->addPath(name);
+}
+
+bool main_window::unwatch_file(const QString& name) {
+	return file_watcher->removePath(name);
+}
+
+void main_window::file_state_changed(const QString& path) {
+	QFileInfo info{path};
+	QString filename = info.fileName();
+	if (!info.exists()) {
+		int button = QMessageBox::warning(this, "Warning", "File " + filename + " was removed from disk or renamed, do you want to keep it open in the editor?",
+                                        QMessageBox::Yes | QMessageBox::No, QMessageBox::Yes);
+		if (button == QMessageBox::No) {
+			close_tab(get_editor_index_by_filename(filename));
+		}
+	}
+	else {
+		int button = QMessageBox::warning(this, "Warning", "File " + filename + " was modified outside of shex, do you want to load external changes?",
+                                               QMessageBox::Yes | QMessageBox::No, QMessageBox::Yes);
+		if (button == QMessageBox::Yes) {
+			hex_editor* editor = get_editor(get_editor_index_by_filename(filename));
+			editor->reload();
+			if (editor->load_error() != "") {
+				QMessageBox::critical(this, "Invalid ROM", editor->load_error(), QMessageBox::Ok);
+			}
+		}
+	}
 }
 
 bool main_window::event(QEvent *event)
@@ -262,6 +302,9 @@ void main_window::create_new_tab(QString name, bool new_file)
 		delete widget;
 		return;
 	}
+	if (!new_file) {
+		watch_file(name);
+	}
 	dynamic_scrollbar *scrollbar = new dynamic_scrollbar(editor);
 	panel_manager *panel_controller = new panel_manager(editor);
 	init_connections(editor, scrollbar, panel_controller);
@@ -282,6 +325,14 @@ void main_window::create_new_tab(QString name, bool new_file)
 hex_editor *main_window::get_editor(int i) const
 {
 	return dynamic_cast<hex_editor *>(tab_widget->widget(i)->layout()->itemAt(0)->widget());
+}
+
+int main_window::get_editor_index_by_filename(const QString& path) const {
+	for (int i = 0; i < tab_widget->count(); i++) {
+		if (tab_widget->tabText(i) == path)
+			return i;
+	}
+	return -1;
 }
 
 main_window::~main_window()

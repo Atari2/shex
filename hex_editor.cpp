@@ -170,6 +170,24 @@ bool hex_editor::follow_selection(bool type)
 	return false;
 }
 
+void hex_editor::save(QString path) {
+	buffer->save(path);
+	ROM_error = buffer->load_error();
+	if (ROM_error != "")
+		return;
+	update_save_state(-save_state);
+}
+
+void hex_editor::reload() {
+	update_save_state(save_state);
+	buffer->reload();
+	ROM_error = buffer->load_error();
+	if (ROM_error != "")
+		return;
+	update_window();
+	disassemble();
+}
+
 void hex_editor::slider_update(int position)
 {
 	if(!scroll_mode){
