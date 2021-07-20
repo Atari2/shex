@@ -1,5 +1,6 @@
 #include <QMenu>
 #include <QMessageBox>
+#include <QHeaderView>
 
 #include "hex_editor.h"
 #include "character_mapper.h"
@@ -118,6 +119,20 @@ void hex_editor::close_compare()
 	grid->setRowStretch(2, 0);
 }
 
+void hex_editor::goto_diff_by_index(int index) {
+	if (!comparing)
+		return;
+	if (!diffs)
+		return;
+	if (index < 0 || index > diffs->size())
+		return;
+
+	auto& diff = (*diffs)[index];
+	offset = diff.get_start_byte();
+	goto_offset(buffer->pc_to_snes(offset));
+	current_diff_start_byte = offset;
+}
+
 void hex_editor::goto_diff(bool direction)
 {
 	if(!comparing){
@@ -232,6 +247,30 @@ void hex_editor::accept_all_current_diffs() {
 	current_diff_start_byte = -1;
 	diffs->clear();
 	update_window();
+}
+
+void hex_editor::populate_table(QTableWidget *table) {
+	table->clearContents();
+	table->setRowCount(diffs->size());
+	for (int i = 0; i < diffs->size(); i++) {
+		auto& diff = (*diffs)[i];
+		auto start = diff.get_start_byte();
+		auto end = diff.get_end_byte();
+		auto length = end - start;
+		QString str = QString::asprintf("$%06X", buffer->pc_to_snes(start));
+		QString data{};
+		data.reserve(length * 3);	// 2 chars for the byte + 1 for the space
+		QByteArray arr = compare_buffer->get_range(start, end);
+		for (auto& byte : arr) {
+			data.append(QString::asprintf("%02X ", (uint8_t)byte));
+		}
+		table->setItem(i, 0, new QTableWidgetItem(str));
+		table->setItem(i, 1, new QTableWidgetItem(QString::asprintf("0x%X", length)));
+		table->setItem(i, 2, new QTableWidgetItem(data));
+	}
+	table->horizontalHeader()->setStretchLastSection(true);
+	table->setEditTriggers(QAbstractItemView::NoEditTriggers);
+	// table->resizeColumnsToContents();
 }
 
 QString hex_editor::generate_patch()
@@ -810,6 +849,14 @@ void hex_editor::search_error(int error, QString find, QString replace_with)
 int hex_editor::get_max_lines()
 {
 	return buffer->size() / text_display::get_columns() - text_display::get_rows() - 1;
+}
+
+void hex_editor::set_diff_panel(diff_panel* panel) {
+	current_diff = panel;
+}
+
+diff_panel* hex_editor::get_diff_panel() {
+	return current_diff;
 }
 
 bool hex_editor::validate_resize()

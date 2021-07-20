@@ -5,10 +5,12 @@
 #include "selection.h"
 #include "rom_buffer.h"
 #include "panels/bookmark_panel.h"
+#include <QTableWidget>
 
 class hex_display;
 class ascii_display;
 class address_display;
+class diff_panel;
 
 class hex_editor : public QWidget
 {
@@ -20,10 +22,12 @@ class hex_editor : public QWidget
 		void compare(QString file);
 		void close_compare();
 		void goto_diff(bool direction);
+		void goto_diff_by_index(int index);
 		void accept_current_diff();
 		void accept_incoming_diff();
 		void accept_all_current_diffs();
 		void accept_all_incoming_diffs();
+		void populate_table(QTableWidget* table);
 		QString generate_patch();
 		bool follow_selection(bool type);
 		
@@ -51,6 +55,7 @@ class hex_editor : public QWidget
 		
 		selection get_selection(){ return selection_area; }
 		void set_selection(selection s){ selection_area = s; update_window(); }
+		QGridLayout* get_layout() { return (QGridLayout*)layout(); };
 		
 	signals:
 		void update_slider(int position);
@@ -83,6 +88,8 @@ class hex_editor : public QWidget
 		void search(QString find, bool direction, bool mode);
 		void replace(QString find, QString replace, bool direction, bool mode);
 		void replace_all(QString find, QString replace, bool mode);
+		void set_diff_panel(diff_panel* panel);
+		diff_panel* get_diff_panel();
 
 	protected:
 		virtual void keyPressEvent(QKeyEvent *event);
@@ -97,6 +104,8 @@ class hex_editor : public QWidget
 		hex_display *hex;
 		ascii_display *ascii;
 		address_display *address;
+
+		diff_panel* current_diff = nullptr;
 		
 		bool comparing = false;
 		ROM_buffer *compare_buffer = new ROM_buffer();

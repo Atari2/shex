@@ -4,6 +4,7 @@
 #include <QMainWindow>
 #include <QUndoGroup>
 #include <QFileSystemWatcher>
+#include <QQueue>
 #include "dialog_manager.h"
 #include "menu_manager.h"
 #include "rom_buffer.h"
@@ -36,6 +37,8 @@ class main_window : public QMainWindow
 		bool watch_file(const QString& name);
 		bool unwatch_file(const QString& name);
 		void file_state_changed(const QString& path);
+	signals:
+		void on_file_state_change(const QString& path);
 	protected:
 		virtual bool event(QEvent *event);
 		virtual void closeEvent(QCloseEvent *event);
@@ -50,7 +53,8 @@ class main_window : public QMainWindow
 		editor_font *font = new editor_font(this);  //We just need an instance for sending events to
 		QString last_directory;
 		QFileSystemWatcher *file_watcher;
-
+		QVector<QString> current_files_in_diff{};
+		QQueue<QString> queue_external_diffs{};
 		void init_connections(hex_editor *editor, dynamic_scrollbar *scrollbar, panel_manager *panel);
 		void create_new_tab(QString name, bool new_file = false);
 		hex_editor *get_editor(int i) const;

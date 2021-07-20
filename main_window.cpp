@@ -2,6 +2,7 @@
 #include <QTabWidget>
 #include <QFileDialog>
 #include <QDesktopWidget>
+#include <QTableWidget>
 
 #include "main_window.h"
 #include "hex_editor.h"
@@ -20,6 +21,9 @@ main_window::main_window(QWidget *parent)
 
 	file_watcher = new QFileSystemWatcher(this);
 	connect(file_watcher, &QFileSystemWatcher::fileChanged, this, &main_window::file_state_changed);
+	// this exists because QFileSystemWatched::fileChanged is a private signal, so if file_state_changed needs to be triggered manually
+	// I need another signal that can be actually be triggered
+	connect(this, &main_window::on_file_state_change, this, &main_window::file_state_changed);
 	QWidget* widget = new QWidget(this);
 	QHBoxLayout *tab_layout = new QHBoxLayout(widget);
 	tab_layout->addWidget(tab_widget);
@@ -207,20 +211,86 @@ void main_window::file_state_changed(const QString& path) {
 		}
 	}
 	else {
+		bool is_already_in_diff = current_files_in_diff.indexOf(path) != -1;
+		if (is_already_in_diff) {
+			// if the current file is already in the diff view, just reload the changes.
+			hex_editor* editor = get_editor(get_editor_index_by_filename(filename));
+			editor->compare(path);
+			editor->populate_table(editor->get_diff_panel()->get_table());
+			return;
+		}
+		if (queue_external_diffs.indexOf(path) == -1) {
+			// if a new request has come in while the current one is still in the message box phase, put it on hold
+			queue_external_diffs.enqueue(path);
+		} else {
+			// if the path is already in queue, there's no need to enqueue it again, just wait
+			return;
+		}
+		if (queue_external_diffs.size() > 1) {
+			// if this is not the only request in the queue, return and wait for turn
+			return;
+		}
 		int button = QMessageBox::warning(this, "Warning", "File " + filename + " was modified outside of shex, do you want to load external changes?",
                                                QMessageBox::Yes | QMessageBox::No, QMessageBox::Yes);
+		// past the message box phase, dequeue the path
+		queue_external_diffs.dequeue();
 		if (button == QMessageBox::Yes) {
+			current_files_in_diff.append(path);
 			int index = get_editor_index_by_filename(filename);
 			hex_editor* editor = get_editor(index);
-			hex_editor placeholder{nullptr, "", undo_group, true};
-			tab_widget->widget(index)->layout()->replaceWidget(editor, &placeholder);
-			diff_panel::diff_show(editor, path, this);
-			tab_widget->widget(index)->layout()->replaceWidget(&placeholder, editor);
-			tab_widget->setTabText(index, editor->get_file_name());
-			// editor->reload();
+			if (editor != get_active_editor()) {
+				tab_widget->setCurrentIndex(index);
+			}
+			if (!editor)
+				return;
+			// if the editor is already comparing, save the path and the state so we can restore it back after diffing
+			QString old_compare{};
+			bool was_comparing = editor->is_comparing();
+			if (was_comparing) {
+				old_compare = editor->get_comparing_full_path();
+			}
+			QWidget* widget = new QWidget(tab_widget->widget(index));
+			QLabel* label = new QLabel("Differences", widget);
+			auto font = label->font();
+			font.setPointSize(12);
+			label->setFont(font);
+			widget->setMaximumSize(tab_widget->widget(index)->size());
+			QVBoxLayout* vlayout = new QVBoxLayout(widget);
+			widget->setLayout(vlayout);
+			QTableWidget* table = new QTableWidget(widget);
+			table->setColumnCount(3);
+			table->setHorizontalHeaderLabels(QStringList{"Start address", "Size", "Byte values"});
+			connect(table, &QTableWidget::cellClicked, this, [editor](int row, int){
+				editor->goto_diff_by_index(row);
+			});
+			vlayout->addWidget(label);
+			label->adjustSize();
+			label->setAlignment(Qt::AlignHCenter);
+			vlayout->addWidget(table);
+			diff_panel* diff_pane = diff_panel::diff_show(this, table, editor, widget);
+			vlayout->addWidget(diff_pane);
+			connect(diff_pane, &diff_panel::done_editing, this, [this, editor, was_comparing, old_compare, widget, path](){
+				// diff is done being edited, nuke everything
+				widget->hide();
+				propagate_resize(widget);
+				if (was_comparing) {
+					editor->compare(old_compare);
+				}
+				editor->set_diff_panel(nullptr);
+				current_files_in_diff.removeOne(path);
+				widget->deleteLater();
+			});
+			tab_widget->widget(index)->layout()->addWidget(widget);
+			editor->compare(path);
+			editor->populate_table(table);
 			if (editor->load_error() != "") {
 				QMessageBox::critical(this, "Invalid ROM", editor->load_error(), QMessageBox::Ok);
 			}
+		}
+		if (!queue_external_diffs.empty()) {
+			// if there's a new request for change in the queue, load that one
+			emit on_file_state_change(queue_external_diffs.dequeue());
+			return;
 		}
 	}
 }
