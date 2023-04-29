@@ -223,7 +223,9 @@ void main_window::file_state_changed(const QString& path) {
 				hex_editor* editor = (*opened_editors)[i];
 				editor->compare(path);
 				if (editor->get_diff()->empty()) {
-					emit editor->get_diff_panel()->done_editing();
+                    diff_panel* pane = editor->get_diff_panel();
+                    if (pane != nullptr)
+                        emit editor->get_diff_panel()->done_editing();
 					editor->close_compare();
 				}
 				else
@@ -268,6 +270,8 @@ void main_window::file_state_changed(const QString& path) {
 				if (editor->get_diff()->empty()) {
 					if (was_comparing)
 						editor->compare(old_compare);
+                    else
+                        editor->close_compare();
 					return;
 				}
 				QWidget* widget = new QWidget(tab_widget->widget(index));
