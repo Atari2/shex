@@ -9,7 +9,11 @@ QT       += core gui widgets
 TARGET = shex
 TEMPLATE = app
 
-QMAKE_CXXFLAGS += -std=c++14 -Wextra 
+win32-msvc*: {
+    QMAKE_CXXFLAGS += /std:c++17 /W3
+} else {
+    QMAKE_CXXFLAGS += -std=c++14 -Wextra
+}
 #-fsanitize=memory -fno-omit-frame-pointer -fsanitize-blacklist=blacklist.txt
 #QMAKE_LFLAGS += -fsanitize=memory
 

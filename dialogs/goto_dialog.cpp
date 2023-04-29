@@ -24,7 +24,8 @@ goto_dialog::goto_dialog(QWidget *parent) : abstract_dialog(parent)
 void goto_dialog::address_entered()
 {
 	bool status;
-	QString input = offset_input->text().remove(QRegExp("[^0-9A-Fa-f]"));
+    static QRegularExpression regnohex{"[^0-9A-Fa-f]"};
+    QString input = offset_input->text().remove(regnohex);
 	int address = input.toInt(&status, 16);
 	if(input.isEmpty()){
 		return;

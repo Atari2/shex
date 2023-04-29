@@ -5,6 +5,7 @@
 #include <QUndoGroup>
 #include <QFileSystemWatcher>
 #include <QQueue>
+#include <QMap>
 #include "dialog_manager.h"
 #include "menu_manager.h"
 #include "rom_buffer.h"
@@ -24,7 +25,7 @@ class main_window : public QMainWindow
 		main_window(QWidget *parent = 0);
 		hex_editor *get_active_editor();
 		~main_window();
-		
+		QMap<QString, QVector<hex_editor*>> current_files_in_diff{};
 	public slots:
 		bool close_tab(int i);
 		void changed_tab(int i);
@@ -53,12 +54,12 @@ class main_window : public QMainWindow
 		editor_font *font = new editor_font(this);  //We just need an instance for sending events to
 		QString last_directory;
 		QFileSystemWatcher *file_watcher;
-		QVector<QString> current_files_in_diff{};
+
 		QQueue<QString> queue_external_diffs{};
 		void init_connections(hex_editor *editor, dynamic_scrollbar *scrollbar, panel_manager *panel);
 		void create_new_tab(QString name, bool new_file = false);
 		hex_editor *get_editor(int i) const;
-		int get_editor_index_by_filename(const QString& path) const;
+		int get_editor_index_by_filename(const QString& path, int start = 0) const;
 		
 };
 

@@ -52,8 +52,8 @@ QString disassembler_core::disassembly_text()
 	const QString prefix[] = {"\tdb ", "\tdw ", "\tdl ", "\tdd "};
 	QString text;
 	QString table_line;
-	table_line.reserve(42);
-	for(const auto &b : disassembly_list){
+    table_line.reserve(42);
+    for(const auto &b : qAsConst(disassembly_list)){
 		if(!b.label.isEmpty() || table_line.length() > 42){
 			table_line.chop(2);
 			text += table_line % '\n' % b.label;
@@ -65,14 +65,21 @@ QString disassembler_core::disassembly_text()
 		switch(b.format){
 			case block::CODE:
 				text += (label_id > 0 ? "\t" : "") % b.data % '\n';
-			break;
-			case block::DATA_PACKED ... block::DATA_PACKED_END:
+            break;
+            case block::DATA_PACKED:
+            case block::DATA_PACKED_2:
+            case block::DATA_PACKED_3:
+            case block::DATA_PACKED_END:
 				if(table_line.isEmpty()){
 					table_line = prefix[b.format - block::DATA_PACKED];
 				}
 				table_line += b.data % ", ";
-			break;
-			case block::DATA_UNPACKED ... block::DATA_UNPACKED_END:
+            break;
+            case block::DATA_UNPACKED:
+            case block::DATA_UNPACKED_WORD:
+            case block::DATA_UNPACKED_1:
+            case block::DATA_UNPACKED_2:
+            case block::DATA_UNPACKED_END:
 				text += prefix[b.format - block::DATA_UNPACKED] % b.data % '\n';
 			break;
 			case block::DATA_STRING:

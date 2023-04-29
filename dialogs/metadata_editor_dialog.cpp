@@ -123,5 +123,6 @@ QString metadata_editor_dialog::calculate_chips()
 unsigned short metadata_editor_dialog::validate_hex(QString input)
 {
 	bool status;
-	return input.remove(QRegExp("[^0-9A-Fa-f]")).toInt(&status, 16);
+    static QRegularExpression regnohex{"[^0-9A-Fa-f]"};
+    return input.remove(regnohex).toInt(&status, 16);
 }

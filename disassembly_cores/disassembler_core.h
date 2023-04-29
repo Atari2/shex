@@ -46,9 +46,13 @@ class disassembler_core : public QObject
 			enum data_format{
 				CODE = 0,
 				DATA_PACKED = 1,
+                DATA_PACKED_2 = 2,
+                DATA_PACKED_3 = 3,
 				DATA_PACKED_END = 4,
 				DATA_UNPACKED = 5,
 				DATA_UNPACKED_WORD = DATA_UNPACKED + 1,
+                DATA_UNPACKED_1 = DATA_UNPACKED + 2,
+                DATA_UNPACKED_2 = DATA_UNPACKED + 3,
 				DATA_UNPACKED_END = 9,
 				DATA_STRING = 10
 			};

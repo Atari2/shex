@@ -1,7 +1,6 @@
 #include <QStatusBar>
 #include <QTabWidget>
 #include <QFileDialog>
-#include <QDesktopWidget>
 #include <QTableWidget>
 
 #include "main_window.h"
@@ -92,9 +91,11 @@ bool main_window::close_tab(int i)
 			break;
 		}
 	}
-	unwatch_file(editor->get_file_name());
 	QWidget *widget = tab_widget->widget(i);
 	tab_widget->removeTab(i);
+	if (get_editor_index_by_filename(editor->get_file_name()) == -1) {
+		unwatch_file(editor->get_file_name());
+	}
 	delete widget;
 	return true;
 }
@@ -207,16 +208,27 @@ void main_window::file_state_changed(const QString& path) {
 		int button = QMessageBox::warning(this, "Warning", "File " + filename + " was removed from disk or renamed, do you want to keep it open in the editor?",
                                         QMessageBox::Yes | QMessageBox::No, QMessageBox::Yes);
 		if (button == QMessageBox::No) {
-			close_tab(get_editor_index_by_filename(filename));
+			// close all the tabs with that name
+			int index = get_editor_index_by_filename(filename);
+			while (index != -1) {
+				close_tab(index);
+				index = get_editor_index_by_filename(filename, index + 1);
+			}
 		}
 	}
 	else {
-		bool is_already_in_diff = current_files_in_diff.indexOf(path) != -1;
-		if (is_already_in_diff) {
-			// if the current file is already in the diff view, just reload the changes.
-			hex_editor* editor = get_editor(get_editor_index_by_filename(filename));
-			editor->compare(path);
-			editor->populate_table(editor->get_diff_panel()->get_table());
+		auto opened_editors = current_files_in_diff.find(path);
+		if (opened_editors != current_files_in_diff.end()) {
+			for (int i = 0; i < opened_editors->size(); i++) {
+				hex_editor* editor = (*opened_editors)[i];
+				editor->compare(path);
+				if (editor->get_diff()->empty()) {
+					emit editor->get_diff_panel()->done_editing();
+					editor->close_compare();
+				}
+				else
+					editor->populate_table(editor->get_diff_panel()->get_table());
+			}
 			return;
 		}
 		if (queue_external_diffs.indexOf(path) == -1) {
@@ -235,56 +247,72 @@ void main_window::file_state_changed(const QString& path) {
 		// past the message box phase, dequeue the path
 		queue_external_diffs.dequeue();
 		if (button == QMessageBox::Yes) {
-			current_files_in_diff.append(path);
+			current_files_in_diff.insert(path, {});
 			int index = get_editor_index_by_filename(filename);
-			hex_editor* editor = get_editor(index);
-			if (editor != get_active_editor()) {
-				tab_widget->setCurrentIndex(index);
-			}
-			if (!editor)
-				return;
-			// if the editor is already comparing, save the path and the state so we can restore it back after diffing
-			QString old_compare{};
-			bool was_comparing = editor->is_comparing();
-			if (was_comparing) {
-				old_compare = editor->get_comparing_full_path();
-			}
-			QWidget* widget = new QWidget(tab_widget->widget(index));
-			QLabel* label = new QLabel("Differences", widget);
-			auto font = label->font();
-			font.setPointSize(12);
-			label->setFont(font);
-			widget->setMaximumSize(tab_widget->widget(index)->size());
-			QVBoxLayout* vlayout = new QVBoxLayout(widget);
-			widget->setLayout(vlayout);
-			QTableWidget* table = new QTableWidget(widget);
-			table->setColumnCount(3);
-			table->setHorizontalHeaderLabels(QStringList{"Start address", "Size", "Byte values"});
-			connect(table, &QTableWidget::cellClicked, this, [editor](int row, int){
-				editor->goto_diff_by_index(row);
-			});
-			vlayout->addWidget(label);
-			label->adjustSize();
-			label->setAlignment(Qt::AlignHCenter);
-			vlayout->addWidget(table);
-			diff_panel* diff_pane = diff_panel::diff_show(this, table, editor, widget);
-			vlayout->addWidget(diff_pane);
-			connect(diff_pane, &diff_panel::done_editing, this, [this, editor, was_comparing, old_compare, widget, path](){
-				// diff is done being edited, nuke everything
-				widget->hide();
-				propagate_resize(widget);
-				if (was_comparing) {
-					editor->compare(old_compare);
+			while (index != -1) {
+				// do this for every tab that might have the same file open
+				hex_editor* editor = get_editor(index);
+				current_files_in_diff[path].append(editor);
+				if (editor != get_active_editor()) {
+					tab_widget->setCurrentIndex(index);
 				}
-				editor->set_diff_panel(nullptr);
-				current_files_in_diff.removeOne(path);
-				widget->deleteLater();
-			});
-			tab_widget->widget(index)->layout()->addWidget(widget);
-			editor->compare(path);
-			editor->populate_table(table);
-			if (editor->load_error() != "") {
-				QMessageBox::critical(this, "Invalid ROM", editor->load_error(), QMessageBox::Ok);
+				if (!editor)
+					return;
+				// if the editor is already comparing, save the path and the state so we can restore it back after diffing
+				QString old_compare{};
+				bool was_comparing = editor->is_comparing();
+				if (was_comparing) {
+					old_compare = editor->get_comparing_full_path();
+				}
+				editor->compare(path);
+				if (editor->get_diff()->empty()) {
+					if (was_comparing)
+						editor->compare(old_compare);
+					return;
+				}
+				QWidget* widget = new QWidget(tab_widget->widget(index));
+				QLabel* label = new QLabel("Differences", widget);
+				auto font = label->font();
+				font.setPointSize(12);
+				label->setFont(font);
+				widget->setMaximumSize(tab_widget->widget(index)->size());
+				QVBoxLayout* vlayout = new QVBoxLayout(widget);
+				widget->setLayout(vlayout);
+				QTableWidget* table = new QTableWidget(widget);
+				table->setColumnCount(3);
+				table->setHorizontalHeaderLabels(QStringList{"Start address", "Size", "Byte values"});
+				connect(table, &QTableWidget::cellClicked, this, [editor](int row, int){
+					editor->goto_diff_by_index(row);
+				});
+				vlayout->addWidget(label);
+				label->adjustSize();
+				label->setAlignment(Qt::AlignHCenter);
+				vlayout->addWidget(table);
+				diff_panel* diff_pane = diff_panel::diff_show(this, table, editor, widget);
+				vlayout->addWidget(diff_pane);
+				connect(diff_pane, &diff_panel::done_editing, this, [this, editor, was_comparing, old_compare, widget, path](){
+					// diff is done being edited, nuke everything
+					widget->hide();
+					propagate_resize(widget);
+					if (was_comparing) {
+						editor->compare(old_compare);
+					}
+					editor->set_diff_panel(nullptr);
+					auto& editors = current_files_in_diff[path];
+					editors.removeOne(editor);
+					if (editors.empty()) {
+						current_files_in_diff.remove(path);
+					} else {
+						emit on_file_state_change(path);
+					}
+					widget->deleteLater();
+				});
+				tab_widget->widget(index)->layout()->addWidget(widget);
+				editor->populate_table(table);
+				if (editor->load_error() != "") {
+					QMessageBox::critical(this, "Invalid ROM", editor->load_error(), QMessageBox::Ok);
+				}
+				index = get_editor_index_by_filename(filename, index + 1);
 			}
 		}
 		if (!queue_external_diffs.empty()) {
@@ -403,8 +431,8 @@ hex_editor *main_window::get_editor(int i) const
 	return dynamic_cast<hex_editor *>(tab_widget->widget(i)->layout()->itemAt(0)->widget());
 }
 
-int main_window::get_editor_index_by_filename(const QString& path) const {
-	for (int i = 0; i < tab_widget->count(); i++) {
+int main_window::get_editor_index_by_filename(const QString& path, int start) const {
+	for (int i = start; i < tab_widget->count(); i++) {
 		if (tab_widget->tabText(i) == path)
 			return i;
 	}

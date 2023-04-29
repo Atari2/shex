@@ -25,7 +25,7 @@ bookmark_panel::bookmark_panel(panel_manager *parent, hex_editor *editor) :
 	setSelectionBehavior(QAbstractItemView::SelectRows);
 	
 	horizontalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);
-	int address_width = metrics.width("$AA:AAAA") + input_padding;
+	int address_width = metrics.horizontalAdvance("$AA:AAAA") + input_padding;
 	int color_width = horizontalHeader()->sectionSize(1);
 	
 	horizontalHeader()->setSectionResizeMode(QHeaderView::Fixed);
@@ -54,8 +54,8 @@ bookmark_panel::bookmark_panel(panel_manager *parent, hex_editor *editor) :
 	address_input->setMinimumWidth(address_width);
 	address_input->setMaximumWidth(address_width);
 	
-	size_input->setMinimumWidth(metrics.width("2222222") + input_padding);
-	size_input->setMaximumWidth(metrics.width("2222222") + input_padding);
+	size_input->setMinimumWidth(metrics.horizontalAdvance("2222222") + input_padding);
+	size_input->setMaximumWidth(metrics.horizontalAdvance("2222222") + input_padding);
 	
 	data_type->addItem("Code: Unknown A/Index", bookmark_data::CODE | bookmark_data::UNKNOWN);
 	data_type->addItem("Code: 8 bit A, 8 bit index", bookmark_data::CODE);
@@ -254,7 +254,8 @@ void bookmark_panel::set_color_button(QColor color)
 int bookmark_panel::check_address(QString address)
 {
 	bool status;
-	int clean = address.remove(QRegExp("[^0-9A-Fa-f]")).toInt(&status, 16);
+    static QRegularExpression regnohex{"[^0-9A-Fa-f]"};
+    int clean = address.remove(regnohex).toInt(&status, 16);
 	if(active_editor->get_buffer()->validate_address(clean)){
 		return clean;
 	}

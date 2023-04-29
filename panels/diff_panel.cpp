@@ -52,13 +52,12 @@ void diff_panel::diff_show(main_window* window, QTableWidget* table, hex_editor*
 	butn_accept_curr->setText("Accept current");
 	butn_accept_curr->setFixedSize(preferredWidth, preferredHeight);
 
-	connect(butn_accept_curr, &QPushButton::clicked, this, [window, editor, table, this]() {
+	connect(butn_accept_curr, &QPushButton::clicked, this, [editor, table, this]() {
 		editor->accept_current_diff();
 		table->removeRow(table->currentIndex().row());
+		// on accept current, save for every change, to update the file on disk
+		editor->save_compared();
 		if (editor->get_diff()->empty()) {
-			window->unwatch_file(editor->get_comparing_full_path());
-			editor->save_compared();
-			window->watch_file(editor->get_comparing_full_path());
 			editor->close_compare();
 			emit done_editing();
 		}
@@ -87,6 +86,7 @@ void diff_panel::diff_show(main_window* window, QTableWidget* table, hex_editor*
 		window->unwatch_file(editor->get_comparing_full_path());
 		editor->save_compared();
 		window->watch_file(editor->get_comparing_full_path());
+		editor->close_compare();
 		emit done_editing();
 	});
 	QWidget* grid_widget = new QWidget(this);

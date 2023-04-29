@@ -673,7 +673,7 @@ void hex_editor::keyPressEvent(QKeyEvent *event)
 
 void hex_editor::wheelEvent(QWheelEvent *event)
 {
-	int steps = -event->delta() / 8 / 15;
+    int steps = -event->angleDelta().y() / 8 / 15;
 	if(wheel_cursor){
 		move_cursor_nibble(text_display::get_columns() * 2 * steps);
 	}else{
@@ -711,8 +711,14 @@ bool hex_editor::event(QEvent *event)
 			return true;
 		case editor_events::DELETE_TEXT:
 			delete_text();
-			return true;
-		case editor_events::NO_SPACES ... editor_events::C_SOURCE:
+            return true;
+        case editor_events::NO_SPACES:
+        case editor_events::SPACES:
+        case editor_events::HEX_FORMAT:
+        case editor_events::ASM_BYTE_TABLE:
+        case editor_events::ASM_WORD_TABLE:
+        case editor_events::ASM_LONG_TABLE:
+        case editor_events::C_SOURCE:
 			ROM_buffer::set_copy_style((ROM_buffer::copy_style)(type-editor_events::NO_SPACES));
 			return true;
 		case editor_events::UNDO:

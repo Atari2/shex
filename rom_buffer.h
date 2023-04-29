@@ -60,7 +60,10 @@ class ROM_buffer : public ROM_metadata
 		void set_active(){ undo_stack->setActive(); }
 		bool is_active(){ return undo_stack->isActive(); }
 		bool check_paste_data(){ return clipboard->mimeData()->hasText(); }
-		QString get_hex(QString input) { return input.remove(QRegExp("[^0-9A-Fa-f]")); }
+        QString get_hex(QString input) {
+            static QRegularExpression regnohex{"[^0-9A-Fa-f]"};
+            return input.remove(regnohex);
+        }
 		QString load_error() { return ROM_error; }
 		QString get_file_name(){ QFileInfo info(ROM); return info.fileName();  }
 		QString get_full_path(){ QFileInfo info(ROM); return info.filePath(); }

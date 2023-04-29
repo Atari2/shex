@@ -11,19 +11,19 @@ map_editor_dialog::map_editor_dialog(QWidget *parent) : abstract_dialog(parent)
 	layout->setVerticalSpacing(0);
 	int letter = 0x20;
 	for(int i = 0; i < 10; i+=2){
-		for(int j = 0; j < 19; j++){
-			QLabel *letter_label = new QLabel(" " + QString(letter) + " ", this);
+        for(int j = 0; j < 19; j++){
+            QLabel *letter_label = new QLabel(" " + QString::number(letter) + " ", this);
 			QLineEdit *line_edit = new QLineEdit(QString::number(letter, 16), this);
 			line_edit->setProperty("maxLength", 2);
 			line_edit->setMaximumWidth(line_edit->minimumSizeHint().width()*2);
 			line_edit->setInputMask("HH");
 			QPalette palette = line_edit->palette();
 			if(i/2&1){
-				palette.setColor(QPalette::Background, palette.alternateBase().color());
+                palette.setColor(QPalette::Window, palette.alternateBase().color());
 				palette.setColor(QPalette::Base, palette.alternateBase().color());
 				
-			}else{
-				palette.setColor(QPalette::Background, palette.base().color());
+            }else{
+                palette.setColor(QPalette::Window, palette.base().color());
 				palette.setColor(QPalette::Base, palette.base().color());
 			}
 			line_edit->setPalette(palette);

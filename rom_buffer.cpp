@@ -188,9 +188,10 @@ int ROM_buffer::paste(int start, int end, bool raw)
 		}else if(copy_data.indexOf("db $") == 0){
 			copy_data.remove(0, 3);
 		}
-	
-		copy_data.remove(QRegExp("(0x|[\\t ])"));
-		copy_data.remove(QRegExp("([\\n\\r]db|dw|dl|[^0-9A-Fa-f])"));
+        static QRegularExpression reg0x{"(0x|[\\t ])"};
+        static QRegularExpression regds{"([\\n\\r]db|dw|dl|[^0-9A-Fa-f])"};
+        copy_data.remove(reg0x);
+        copy_data.remove(regds);
 		hex_data = hex_data.fromHex(copy_data.toUtf8());
 	}else{
 		hex_data = hex_data.fromHex(copy_data.toUtf8().toHex());

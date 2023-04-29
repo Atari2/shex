@@ -24,7 +24,7 @@ void message_handler(QtMsgType type, const char *message)
 	QFile log("debug.log");
 	log.open(QIODevice::WriteOnly | QIODevice::Append);
 	QTextStream log_stream(&log);
-	log_stream << text << endl;
+	log_stream << text << Qt::endl;
 }
 
 int main(int argc, char *argv[])

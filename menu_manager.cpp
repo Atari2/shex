@@ -1,5 +1,5 @@
 #include <QMenuBar>
-
+#include <QActionGroup>
 #include "menu_manager.h"
 #include "menus/history_menu_item.h"
 #include "hex_editor.h"

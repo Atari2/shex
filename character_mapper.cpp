@@ -1,5 +1,5 @@
 #include <QFile>
-#include <QRegExp>
+#include <QRegularExpression>
 
 #include "character_mapper.h"
 #include "debug.h"
@@ -17,7 +17,8 @@ bool character_mapper::load_map(QString map_file_path)
 	}
 	while(!map_file.atEnd()){
 		QString line = map_file.readLine().trimmed();
-		int seperator = line.remove(QRegExp("//.*")).lastIndexOf('=');
+        static QRegularExpression regdot{"//.*"};
+        int seperator = line.remove(regdot).lastIndexOf('=');
 		if(line.isEmpty()){
 			continue;
 		}

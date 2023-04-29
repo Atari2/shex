@@ -45,7 +45,8 @@ void select_range_dialog::range_entered()
 int select_range_dialog::parse_input(QString input)
 {
 	bool status;
-	input.remove(QRegExp("[^0-9A-Fa-f]"));
+    static QRegularExpression regnohex{"[^0-9A-Fa-f]"};
+    input.remove(regnohex);
 	int address = input.toInt(&status, 16);
 	if(address > 1 << 24){
 		status = false;
